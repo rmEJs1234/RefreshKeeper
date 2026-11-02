@@ -52,12 +52,12 @@ class RefreshService : Service() {
         val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         val channelId = "refresh_keeper"
         nm.createNotificationChannel(
-            NotificationChannel(channelId, "리프레시 키퍼", NotificationManager.IMPORTANCE_MIN)
+            NotificationChannel(channelId, "포인터 120", NotificationManager.IMPORTANCE_MIN)
         )
         val notification = Notification.Builder(this, channelId)
-            .setContentTitle("120Hz 유지 중")
-            .setContentText("주사율을 높게 유지하고 있어요")
-            .setSmallIcon(android.R.drawable.ic_menu_view)
+            .setContentTitle("포인터 120 켜짐")
+            .setContentText("화면을 120Hz로 유지하고 있어요")
+            .setSmallIcon(R.drawable.ic_stat_pointer)
             .setOngoing(true)
             .build()
         if (Build.VERSION.SDK_INT >= 34) {

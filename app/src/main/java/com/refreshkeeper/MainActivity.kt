@@ -41,12 +41,12 @@ class MainActivity : Activity() {
         }
 
         val title = TextView(this).apply {
-            text = "리프레시 키퍼"
+            text = "포인터 120"
             textSize = 26f
             gravity = Gravity.CENTER
         }
         val desc = TextView(this).apply {
-            text = "마우스 포인터가 끊겨 보일 때 화면을 120Hz로 유지해 줘요.\n" +
+            text = "마우스 포인터가 끊겨 보일 때 화면을 120Hz로 유지해서 부드럽게 만들어 줘요.\n" +
                 "'다른 앱 위에 표시' 권한이 필요해요."
             textSize = 15f
             gravity = Gravity.CENTER
