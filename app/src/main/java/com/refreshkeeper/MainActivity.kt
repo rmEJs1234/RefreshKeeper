@@ -5,6 +5,7 @@ import android.app.Activity
 import android.app.ActivityManager
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -15,6 +16,8 @@ import android.widget.LinearLayout
 import android.widget.Switch
 import android.widget.TextView
 import android.widget.Toast
+import rikka.shizuku.Shizuku
+import kotlin.concurrent.thread
 
 class MainActivity : Activity() {
 
@@ -22,6 +25,7 @@ class MainActivity : Activity() {
     private lateinit var serviceStatus: TextView
     private lateinit var serviceButton: Button
     private lateinit var systemButton: Button
+    private lateinit var shizukuButton: Button
     private lateinit var testView: PointerTestView
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -69,6 +73,8 @@ class MainActivity : Activity() {
         serviceButton = Button(this).apply { setOnClickListener { onToggleService() } }
         systemButton = Button(this).apply { setOnClickListener { onToggleSystemRefresh() } }
 
+        shizukuButton = Button(this).apply { setOnClickListener { onToggleShizuku() } }
+
         val buttons = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             addView(serviceButton, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
@@ -82,6 +88,7 @@ class MainActivity : Activity() {
         root.addView(testView, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
         root.addView(serviceStatus)
         root.addView(buttons)
+        root.addView(shizukuButton)
         setContentView(root)
 
         if (Build.VERSION.SDK_INT >= 33) {
@@ -128,6 +135,46 @@ class MainActivity : Activity() {
         refreshUi()
     }
 
+    private val shizukuPermListener = Shizuku.OnRequestPermissionResultListener { _, result ->
+        runOnUiThread {
+            Toast.makeText(
+                this,
+                if (result == PackageManager.PERMISSION_GRANTED) "Shizuku 권한 허용됨, 다시 눌러 주세요" else "Shizuku 권한 거부됨",
+                Toast.LENGTH_SHORT
+            ).show()
+            refreshUi()
+        }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        Shizuku.addRequestPermissionResultListener(shizukuPermListener)
+    }
+
+    override fun onStop() {
+        Shizuku.removeRequestPermissionResultListener(shizukuPermListener)
+        super.onStop()
+    }
+
+    private fun onToggleShizuku() {
+        if (!Shizuku.pingBinder()) {
+            Toast.makeText(this, "Shizuku 앱에서 먼저 시작해 주세요", Toast.LENGTH_LONG).show()
+            return
+        }
+        if (Shizuku.checkSelfPermission() != PackageManager.PERMISSION_GRANTED) {
+            Shizuku.requestPermission(100)
+            return
+        }
+        val locked = Settings.System.getFloat(contentResolver, "min_refresh_rate", 0f) >= 119f
+        thread {
+            val out = if (locked) ShizukuControl.reset() else ShizukuControl.apply()
+            runOnUiThread {
+                Toast.makeText(this, out, Toast.LENGTH_LONG).show()
+                refreshUi()
+            }
+        }
+    }
+
     private fun refreshUi() {
         serviceStatus.text = when {
             !Settings.canDrawOverlays(this) -> "120Hz 유지 오버레이: 권한 필요"
@@ -138,6 +185,12 @@ class MainActivity : Activity() {
             !Settings.canDrawOverlays(this) -> "오버레이 권한 허용"
             isServiceRunning() -> "오버레이 끄기"
             else -> "오버레이 켜기"
+        }
+        shizukuButton.text = when {
+            !Shizuku.pingBinder() -> "Shizuku 시작 필요"
+            Shizuku.checkSelfPermission() != PackageManager.PERMISSION_GRANTED -> "Shizuku 권한 허용"
+            Settings.System.getFloat(contentResolver, "min_refresh_rate", 0f) >= 119f -> "Shizuku 120Hz 고정 해제"
+            else -> "Shizuku로 120Hz 고정"
         }
         systemButton.text = when {
             !Settings.System.canWrite(this) -> "시스템 설정 권한 허용"
